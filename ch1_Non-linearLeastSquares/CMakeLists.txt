@@ -41,4 +41,15 @@ target_link_libraries(ad_three_dim_multivariate
     absl::log_initialize
 )
 ####################################################
+add_executable(powerll powerll.cpp)
+target_link_libraries(powerll
+    ${CERES_LIBRARIES}
+    absl::log_initialize
+    absl::flags
+    absl::log
+    absl::strings
+    absl::flags_parse
+    absl::flags
+)
+####################################################
 target_include_directories(main PRIVATE ${CERES_INCLUDE_DIRS})
