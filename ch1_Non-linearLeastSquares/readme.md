@@ -220,3 +220,81 @@ options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 
 ---
 
+在 Ceres Solver 中，**Numeric Derivatives（数值导数）** 是在无法提供解析导数（Analytic Derivatives）或自动微分（Automatic Differentiation）时，用\*\*有限差分（finite difference）\*\*方法近似计算导数的一种方式。
+
+---
+
+## 📘 一、什么是 Numeric Derivatives？
+
+Ceres 提供三种导数计算方式：
+
+1. **Analytic Derivatives（解析导数）**：手动写出雅可比矩阵（Jacobian）。
+2. **Automatic Differentiation（自动微分）**：Ceres 内置的 `AutoDiffCostFunction`。
+3. **Numeric Derivatives（数值导数）**：Ceres 用 `NumericDiffCostFunction` 通过有限差分计算导数。
+
+使用 Numeric Derivatives 的成本最高，因为它：
+
+* 需要多次调用用户定义的 cost 函数；
+* 导数精度较差，可能引入数值不稳定；
+* 效率低，但在一些难以微分的场景中是可行的选择。
+
+---
+
+## 🛠️ 二、使用方法：`NumericDiffCostFunction`
+
+### 示例：
+
+```cpp
+struct MyCostFunctor {
+  template <typename T>
+  bool operator()(const T* const x, T* residual) const {
+    residual[0] = T(10.0) - x[0];
+    return true;
+  }
+};
+
+ceres::CostFunction* cost_function =
+    new ceres::NumericDiffCostFunction<MyCostFunctor, ceres::CENTRAL, 1, 1>(
+        new MyCostFunctor);
+problem.AddResidualBlock(cost_function, nullptr, &x);
+```
+
+### 模板参数说明：
+
+```cpp
+NumericDiffCostFunction<FunctorType, DifferenceMethodType, num_residuals, parameter_block_size...>
+```
+
+* `FunctorType`：代价函数结构体；
+* `DifferenceMethodType`：差分类型：
+
+  * `ceres::CENTRAL`（中央差分，精度更高）；
+  * `ceres::FORWARD`（前向差分，速度更快）；
+* `num_residuals`：残差维度；
+* `parameter_block_size...`：参数块维度，可以多个。
+
+---
+
+## 🧮 三、差分原理（中央差分举例）：
+
+对某参数 $x_i$，残差函数为 $f(x)$，其数值导数估算为：
+
+$$
+\frac{\partial f}{\partial x_i} \approx \frac{f(x + h \cdot e_i) - f(x - h \cdot e_i)}{2h}
+$$
+
+其中 $h$ 是一个小扰动值（默认为 $\sqrt{\epsilon}$，可以配置），$e_i$ 是单位向量。
+
+---
+
+## ⚠️ 四、使用建议
+
+* 优先考虑使用 **AutoDiff** 或 **Analytic**；
+* 只有在无法手动/自动求导时才使用 NumericDiff；
+* 注意配置差分步长，避免数值精度误差；
+* NumericDerivatives 更容易引入局部最小值或震荡现象。
+
+---
+
+
+
