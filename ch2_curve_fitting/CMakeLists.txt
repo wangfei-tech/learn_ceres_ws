@@ -10,3 +10,9 @@ target_link_libraries(curve_fitting
     ${CERES_LIBRARIES}
     absl::log_initialize
 )
+###################################################
+add_executable(robust_curve_fitting robust_curve_fitting.cpp)
+target_link_libraries(robust_curve_fitting
+    ${CERES_LIBRARIES}
+    absl::log_initialize
+)
