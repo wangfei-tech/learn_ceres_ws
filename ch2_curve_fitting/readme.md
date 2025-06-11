@@ -152,3 +152,125 @@ problem.AddResidualBlock(cost_function, loss, &m, &c);
 
 ---
 
+在 g2o（通用图优化框架）中，`BaseUnaryEdge` 是一个**模板基类**，用于定义**一元边**（Unary Edge），即仅连接**一个顶点**的边。它是 g2o 中构建误差边的核心类之一，主要用于以下场景：
+
+---
+
+### **1. 核心作用**
+`BaseUnaryEdge` 的作用是：
+- **定义误差项**：计算观测值与模型预测值之间的差异
+- **连接单个顶点**：将误差与待优化的一个顶点参数关联
+- **提供自动微分接口**：支持解析或数值计算雅可比矩阵
+
+---
+
+### **2. 模板参数**
+```cpp
+template <int D, typename E, typename VertexXi>
+class BaseUnaryEdge : public BaseEdge<D, E>
+```
+- **`D`**：误差的维度（例如：1维标量误差、2维像素误差等）
+- **`E`**：测量值的数据类型（例如：`double`、`Eigen::Vector2d`）
+- **`VertexXi`**：连接的顶点类型（例如：`VertexSE3`、`VertexPointXYZ`）
+
+---
+
+### **3. 关键成员函数**
+| 函数 | 作用 | 是否必须实现 |
+|------|------|-------------|
+| `computeError()` | 计算误差 | ✅ 必须 |
+| `linearizeOplus()` | 计算雅可比矩阵 | ❌ 可选（但推荐） |
+| `read()` / `write()` | 数据序列化 | ❌ 可选 |
+
+---
+
+### **4. 典型使用场景**
+#### **场景 1：曲线拟合**
+```cpp
+// 定义边：y = ax² + bx + c 的误差
+class CurveFittingEdge : public g2o::BaseUnaryEdge<1, double, VertexABC> {
+    void computeError() override {
+        const VertexABC* v = static_cast<VertexABC*>(_vertices[0]);
+        _error[0] = _measurement - (v->a() * x*x + v->b() * x + v->c());
+    }
+};
+```
+
+#### **场景 2：传感器校准**
+```cpp
+// 定义边：激光雷达测距误差
+class LidarEdge : public g2o::BaseUnaryEdge<1, double, VertexLidarParams> {
+    void computeError() override {
+        const VertexLidarParams* v = static_cast<VertexLidarParams*>(_vertices[0]);
+        _error[0] = _measurement - v->calculateDistance();
+    }
+};
+```
+
+#### **场景 3：位姿估计**
+```cpp
+// 定义边：重投影误差（简化版）
+class ReprojectionEdge : public g2o::BaseUnaryEdge<2, Eigen::Vector2d, VertexSE3> {
+    void computeError() override {
+        const VertexSE3* v = static_cast<VertexSE3*>(_vertices[0]);
+        _error = _measurement - camera.project(v->pose() * point3d);
+    }
+};
+```
+
+---
+
+### **5. 与其它边类的对比**
+| 边类型 | 连接顶点数 | 典型应用 |
+|--------|------------|----------|
+| `BaseUnaryEdge` | 1个 | 曲线拟合、传感器模型 |
+| `BaseBinaryEdge` | 2个 | 点-位姿约束、ICP |
+| `BaseMultiEdge` | ≥2个 | 多传感器融合 |
+
+---
+
+### **6. 实现注意事项**
+1. **内存对齐**：
+   ```cpp
+   EIGEN_MAKE_ALIGNED_OPERATOR_NEW // 必须添加
+   ```
+2. **误差方向**：
+   ```cpp
+   _error = prediction - measurement; // 或反过来
+   ```
+3. **雅可比矩阵**：
+   - 若未实现 `linearizeOplus()`，g2o 会使用数值差分（效率低）
+
+---
+
+### **7. 完整示例代码**
+```cpp
+// 定义一元边：y = kx + b 的线性拟合
+class LinearEdge : public g2o::BaseUnaryEdge<1, double, VertexLineParams> {
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    LinearEdge(double x, double y) : _x(x), _measurement(y) {}
+
+    void computeError() override {
+        const VertexLineParams* v = static_cast<VertexLineParams*>(_vertices[0]);
+        _error[0] = (_measurement - (v->k() * _x + v->b()));
+    }
+
+    void linearizeOplus() override {
+        _jacobianOplusXi[0] = -_x;  // ∂e/∂k = -x
+        _jacobianOplusXi[1] = -1;   // ∂e/∂b = -1
+    }
+
+private:
+    double _x; // 输入的x值
+};
+```
+
+---
+
+### **8. 为什么选择 `BaseUnaryEdge`？**
+- **简单性**：比 `BaseBinaryEdge` 更易实现
+- **效率**：比通用的 `BaseMultiEdge` 更高效
+- **清晰性**：明确表示"一个观测对应一个待优化变量"的关系
+
+通过继承 `BaseUnaryEdge`，用户可以快速构建各种一元误差约束，是 g2o 中最常用的边类型之一。

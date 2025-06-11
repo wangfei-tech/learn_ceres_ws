@@ -1,13 +1,19 @@
 cmake_minimum_required(VERSION 3.10)
 project(my_ceres_example)
+cmake_policy(SET CMP0072 NEW)
 
 find_package(Ceres REQUIRED)
+message(STATUS "CERES_INCLUDE_DIRS = ${CERES_INCLUDE_DIRS}")
+message(STATUS "CERES_LIBRARIES = ${CERES_LIBRARIES}")
 find_package(absl REQUIRED)  # 若你是系统安装的 abseil
+# 查找必要的依赖包
+find_package(Eigen3 REQUIRED)
+find_package(g2o REQUIRED)
 
 ##################################################
 add_executable(main main.cpp)
-target_link_libraries(main
-    ${CERES_LIBRARIES}
+target_link_libraries(main PRIVATE
+    Ceres::ceres
     absl::log_initialize
 )
 ##################################################
@@ -52,4 +58,14 @@ target_link_libraries(powerll
     absl::flags
 )
 ####################################################
-target_include_directories(main PRIVATE ${CERES_INCLUDE_DIRS})
+add_executable(main_g2o
+    main_g2o.cpp  
+)
+target_link_libraries(main_g2o PRIVATE
+    g2o::core
+    g2o::stuff
+    g2o::types_slam2d
+    g2o_solver_dense 
+    Eigen3::Eigen
+)
+####################################################
