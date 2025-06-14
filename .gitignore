@@ -1,4 +1,5 @@
 ch1_Non-linearLeastSquares/build
 ch2_curve_fitting/build
 ch4_pose_graph/build
+ch5_pose_graph_g2o/build
 .vscode
