@@ -1,6 +1,15 @@
 
 ### g2o_viewer 默认不安装 安装参考如下网址
 https://blog.csdn.net/fb_941219/article/details/107728123
+查看优化的类型
+```sh
+ bin/g2o_viewer -renameTypes TUTORIAL_VERTEX_SE2=VERTEX_SE2,TUTORIAL_VERTEX_POINT_XY=VERTEX_XY,TUTORIAL_PARAMS_SE2_OFFSET=PARAMS_SE2OFFSET,TUTORIAL_EDGE_SE2=EDGE_SE2,TUTORIAL_EDGE_SE2_POINT_XY=EDGE_SE2_XY tutorial_after.g2o
+ ```
+优化前
+![alt text](pic/viewer.png)
+优化后
+![alt text](pic/after.png)
+
 ##  一句话总结
 
 > 在图优化中，**误差（残差）** 是：
